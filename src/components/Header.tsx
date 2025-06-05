@@ -15,9 +15,8 @@ const Header: React.FC = () => {
             <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center mr-3">
               <span className="text-white text-sm font-bold">H</span>
             </div>
-            <h1 className="text-xl font-semibold text-gray-800">
-              サロン
-            </h1>
+            <h1 className="text-xl font-bold text-gray-800">サロン</h1>
+            <p className="text-xs text-gray-500 mt-1">次回予約システム v1.0</p>
           </div>
 
           {/* ナビゲーション */}
