@@ -5,24 +5,49 @@ name: Deploy to Firebase Hosting on merge
     branches:
       - main
       - master
+
+env:
+  NODE_VERSION: '18'
+
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Run type check
+        run: npm run build --if-present
+
       - name: Build project
         run: npm run build
+
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SALONFLOW_80RSI }}
           channelId: live
-          projectId: salonflow-80rsi 
+          projectId: salonflow-80rsi
+
+      - name: Deploy success notification
+        if: success()
+        run: |
+          echo "🎉 デプロイ成功!"
+          echo "📱 本番環境: https://salonflow-80rsi.web.app"
+          echo "🔥 Firebase Console: https://console.firebase.google.com/project/salonflow-80rsi"
+
+      - name: Deploy failure notification
+        if: failure()
+        run: |
+          echo "❌ デプロイ失敗"
+          echo "🐛 ログを確認してエラーを修正してください" 
