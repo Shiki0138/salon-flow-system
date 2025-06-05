@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ReservationDetails } from '../types';
-import { generateQRCode, generateICSFile } from '../utils/calendar';
+import { generateQRCode, generateDetailedQRCode, generateICSFile } from '../utils/calendar';
 import { formatPrice, formatDiscountRate } from '../utils/pricing';
 
 interface QRCodeDisplayProps {
@@ -17,8 +17,10 @@ const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
   onBack
 }) => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [detailedQrCodeUrl, setDetailedQrCodeUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [qrMode, setQrMode] = useState<'simple' | 'detailed'>('simple');
   const [couponCode] = useState<string>(() => 
     Math.random().toString(36).substring(2, 10).toUpperCase()
   );
@@ -29,10 +31,14 @@ const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
         setIsLoading(true);
         setError('');
         
-        // 軽量QRコードを生成（Google Calendar URLベース）
-        const qrUrl = await generateQRCode(reservation, shopName, shopAddress);
+        // 両方のQRコードを生成
+        const [simpleQR, detailedQR] = await Promise.all([
+          generateQRCode(reservation, shopName, shopAddress),
+          generateDetailedQRCode(reservation, shopName, shopAddress)
+        ]);
         
-        setQrCodeUrl(qrUrl);
+        setQrCodeUrl(simpleQR);
+        setDetailedQrCodeUrl(detailedQR);
       } catch (err) {
         console.error('QRコード生成エラー:', err);
         setError('QRコードの生成に失敗しました。もう一度お試しください。');
@@ -142,21 +148,72 @@ const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({
 
       {/* QRコード */}
       <div className="card text-center bg-gradient-to-br from-white to-primary-50">
-        <h3 className="font-medium text-neutral-800 mb-4">
-          📱 スマートフォンでスキャン
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-medium text-neutral-800">
+            📱 スマートフォンでスキャン
+          </h3>
+          
+          {/* QRコード種類切り替え */}
+          <div className="flex bg-neutral-100 rounded-lg p-1">
+            <button
+              onClick={() => setQrMode('simple')}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                qrMode === 'simple' 
+                  ? 'bg-primary-500 text-white' 
+                  : 'text-neutral-600 hover:text-neutral-800'
+              }`}
+            >
+              読み取りやすい
+            </button>
+            <button
+              onClick={() => setQrMode('detailed')}
+              className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                qrMode === 'detailed' 
+                  ? 'bg-primary-500 text-white' 
+                  : 'text-neutral-600 hover:text-neutral-800'
+              }`}
+            >
+              詳細情報付き
+            </button>
+          </div>
+        </div>
         
-        {qrCodeUrl && (
-          <div className="inline-block p-4 bg-white rounded-xl shadow-sm">
+        {/* QRコード表示 */}
+        {(qrCodeUrl || detailedQrCodeUrl) && (
+          <div className="inline-block p-6 bg-white rounded-xl shadow-sm mb-4">
             <img 
-              src={qrCodeUrl} 
+              src={qrMode === 'simple' ? qrCodeUrl : detailedQrCodeUrl} 
               alt="予約QRコード" 
-              className="w-48 h-48 mx-auto"
+              className="w-64 h-64 mx-auto block"
+              style={{ imageRendering: 'pixelated' }}
             />
           </div>
         )}
         
-        <p className="text-sm text-neutral-600 mt-4 mb-4">
+        {/* 読み取りガイド */}
+        <div className="bg-blue-50 rounded-lg p-4 mb-4">
+          <h4 className="font-medium text-blue-900 mb-2">📖 読み取りのコツ</h4>
+          <div className="text-sm text-blue-700 space-y-1">
+            {qrMode === 'simple' ? (
+              <>
+                <p>✅ <strong>読み取りやすい大きなQRコード</strong></p>
+                <p>🎯 基本的な予約情報のみ（推奨）</p>
+                <p>📱 古いスマートフォンでも確実に読み取れます</p>
+              </>
+            ) : (
+              <>
+                <p>📋 <strong>詳細情報付きQRコード</strong></p>
+                <p>💰 料金・リマインダー設定案内付き</p>
+                <p>📱 新しいスマートフォン推奨</p>
+              </>
+            )}
+            <p className="mt-2 text-blue-600">
+              💡 読み取れない場合は「読み取りやすい」に切り替えてください
+            </p>
+          </div>
+        </div>
+        
+        <p className="text-sm text-neutral-600 mb-4">
           QRコードをスキャンするとGoogle Calendarで予約が登録できます
         </p>
         

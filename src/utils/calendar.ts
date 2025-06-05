@@ -63,27 +63,69 @@ export const generateGoogleCalendarURL = (
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDate}/${endDate}&details=${description}&location=${location}&remind=3d`;
 };
 
-// 軽量QRコードを生成（Google Calendar URLベース）
+// 軽量QRコード生成（最適化版）
 export const generateQRCode = async (
   reservation: ReservationDetails,
   shopName: string,
   shopAddress: string
 ): Promise<string> => {
   try {
-    const googleCalendarURL = generateGoogleCalendarURL(reservation, shopName, shopAddress);
-    // QRコード生成時の互換性を最大化（iQR対応はライブラリ依存のため、エラー訂正レベルを最大にし、マージンも広げる）
-    const qrCodeDataUrl = await QRCode.toDataURL(googleCalendarURL, {
-      width: 256,
-      margin: 4, // マージンを広げる
-      errorCorrectionLevel: 'H', // 最高レベルのエラー訂正
+    // 短縮版のGoogle Calendar URL（最小限の情報のみ）
+    const { selectedMenus, appointmentDate, startTime } = reservation;
+    const menuNames = selectedMenus.map(menu => menu.name).join(',');
+    
+    const startDateTime = new Date(appointmentDate);
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    startDateTime.setHours(startHour, startMin, 0, 0);
+    
+    // 短縮URL形式（Google Calendar Quick Add）
+    const title = encodeURIComponent(`${shopName} ${menuNames}`);
+    const dateStr = startDateTime.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    
+    // 短縮版URL（データ量を最小化）
+    const shortURL = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${dateStr}`;
+    
+    // QRコード生成（読み取りやすさ最優先設定）
+    const qrCodeDataUrl = await QRCode.toDataURL(shortURL, {
+      width: 320,           // サイズを大きく
+      margin: 6,            // マージンを広く
+      errorCorrectionLevel: 'M', // 中程度のエラー訂正（L,M,Q,Hの順で高くなる）
       color: {
-        dark: '#262626',
-        light: '#ffffff'
+        dark: '#000000',    // 濃い黒
+        light: '#ffffff'    // 純白
+      },
+      rendererOpts: {
+        quality: 1.0        // 最高品質
       }
     });
     return qrCodeDataUrl;
   } catch (error) {
     throw new Error(`QRコード生成エラー: ${error}`);
+  }
+};
+
+// 詳細情報付きQRコード生成（オプション）
+export const generateDetailedQRCode = async (
+  reservation: ReservationDetails,
+  shopName: string,
+  shopAddress: string
+): Promise<string> => {
+  try {
+    const googleCalendarURL = generateGoogleCalendarURL(reservation, shopName, shopAddress);
+    
+    // 詳細版は小さめで高精度
+    const qrCodeDataUrl = await QRCode.toDataURL(googleCalendarURL, {
+      width: 240,
+      margin: 4,
+      errorCorrectionLevel: 'L', // 低エラー訂正で細かくする
+      color: {
+        dark: '#1a1a1a',
+        light: '#ffffff'
+      }
+    });
+    return qrCodeDataUrl;
+  } catch (error) {
+    throw new Error(`詳細QRコード生成エラー: ${error}`);
   }
 };
 
