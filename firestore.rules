@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 許可されたメールアドレスのリスト（ここに許可するメールアドレスを追加）
+    function isAuthorizedUser() {
+      return request.auth != null && (
+        request.auth.token.email == 'your-email@example.com' ||
+        // 必要に応じて追加のメールアドレスを記述
+        request.auth.token.email == 'admin@yourdomain.com'
+        // ||request.auth.token.email == 'another-user@example.com'
+      );
+    }
+    
+    // 現在の設定（一般公開モード）
+    // 店舗データ: 読み取りは誰でも可能、書き込みは認証ユーザーのみ
+    match /shops/{shopId} {
+      allow read: if true; // 予約システムで使用するため公開読み取り
+      allow write: if request.auth != null;
+    }
+    
+    // メニューデータ: 読み取りは誰でも可能、書き込みは認証ユーザーのみ
+    match /menus/{menuId} {
+      allow read: if true; // 予約システムで使用するため公開読み取り
+      allow write: if request.auth != null;
+    }
+    
+    // 許可制モード用のルール（上記をコメントアウトして以下を有効化）
+    /*
+    // 店舗データ: 許可されたユーザーのみアクセス可能
+    match /shops/{shopId} {
+      allow read, write: if isAuthorizedUser();
+    }
+    
+    // メニューデータ: 許可されたユーザーのみアクセス可能
+    match /menus/{menuId} {
+      allow read, write: if isAuthorizedUser();
+    }
+    */
+  }
+} 
